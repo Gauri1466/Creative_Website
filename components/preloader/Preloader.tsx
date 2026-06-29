@@ -15,8 +15,12 @@ export function Preloader({ onComplete }: PreloaderProps) {
   const [hasScrolled, setHasScrolled] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   
+  const [displayedProgress, setDisplayedProgress] = useState(0);
+  const [showCanvas, setShowCanvas] = useState(false);
+  
+  const currentProgressRef = useRef(0);
+  const timeoutStartedRef = useRef(false);
   const targetFrameRef = useRef(0);
   const currentFrameRef = useRef(0);
   const isFadingOutRef = useRef(false);
@@ -29,19 +33,65 @@ export function Preloader({ onComplete }: PreloaderProps) {
     };
   }, []);
 
-  // Frame drawing function
+  // Smoothly increment displayedProgress slowly
+  useEffect(() => {
+    let animationFrameId: number;
+    
+    const update = () => {
+      const current = currentProgressRef.current;
+      if (current < 100) {
+        // If assets aren't loaded yet, cap display progress at 99%
+        const maxAllowed = isLoaded ? 100 : 99;
+        if (current < maxAllowed) {
+          // Increment slowly and organically (~0.4% to 0.8% per frame)
+          const step = Math.random() * 0.4 + 0.4;
+          const next = Math.min(maxAllowed, current + step);
+          currentProgressRef.current = next;
+          setDisplayedProgress(Math.round(next));
+        }
+      }
+      
+      if (currentProgressRef.current >= 100 && isLoaded) {
+        if (!timeoutStartedRef.current) {
+          timeoutStartedRef.current = true;
+          setTimeout(() => {
+            setShowCanvas(true);
+          }, 500); // 500ms delay after hitting 100% for a premium transition feel
+        }
+        return;
+      }
+      
+      animationFrameId = requestAnimationFrame(update);
+    };
+
+    animationFrameId = requestAnimationFrame(update);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [isLoaded]);
+
+  // Frame drawing function with aspect cover (fill) scaling
   const drawFrame = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, index: number) => {
     const img = images[index];
     if (!img) return;
 
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
+    const imgWidth = img.naturalWidth || img.width;
+    const imgHeight = img.naturalHeight || img.height;
+
+    if (imgWidth === 0 || imgHeight === 0) return;
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
+    // Cover scaling logic (aspect fill)
+    const scale = Math.max(canvasWidth / imgWidth, canvasHeight / imgHeight);
+    const drawWidth = imgWidth * scale;
+    const drawHeight = imgHeight * scale;
+    const x = (canvasWidth - drawWidth) / 2;
+    const y = (canvasHeight - drawHeight) / 2;
+
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+    ctx.drawImage(img, x, y, drawWidth, drawHeight);
   };
 
   // Main canvas render and scroll listener loop
@@ -49,20 +99,20 @@ export function Preloader({ onComplete }: PreloaderProps) {
     if (!isLoaded || images.length === 0) return;
 
     const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const resizeCanvas = () => {
-      const rect = container.getBoundingClientRect();
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       const dpr = window.devicePixelRatio || 1;
 
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      canvas.style.width = `${rect.width}px`;
-      canvas.style.height = `${rect.height}px`;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
 
       drawFrame(ctx, canvas, Math.round(currentFrameRef.current));
     };
@@ -76,7 +126,7 @@ export function Preloader({ onComplete }: PreloaderProps) {
       setHasScrolled(true);
       
       const delta = e.deltaY;
-      const sensitivity = 0.04; // "not too fast, not too slow"
+      const sensitivity = 0.04; // smooth scrolling sensitivity
       
       targetFrameRef.current = Math.max(0, Math.min(74, targetFrameRef.current + delta * sensitivity));
     };
@@ -155,61 +205,60 @@ export function Preloader({ onComplete }: PreloaderProps) {
           }}
           className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black select-none overflow-hidden"
         >
-          {/* Centered High-Quality Frame & Canvas */}
+          {/* Full-Screen Canvas */}
           {isLoaded && (
-            <div className="flex flex-col items-center justify-center w-full max-w-4xl px-6">
-              <div
-                ref={containerRef}
-                className="relative w-full max-w-[736px] aspect-video rounded-2xl border border-zinc-800 bg-zinc-950 p-[1px] shadow-2xl shadow-amber-500/5 mb-8"
-              >
-                {/* Glow border */}
-                <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/5 via-transparent to-indigo-500/5 rounded-2xl pointer-events-none" />
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: showCanvas ? 1 : 0 }}
+              transition={{ duration: 1.0, ease: 'easeInOut' }}
+              className="absolute inset-0 w-full h-full pointer-events-none"
+              style={{ pointerEvents: showCanvas ? 'auto' : 'none' }}
+            >
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 w-full h-full object-cover pointer-events-none z-10"
+              />
 
-                {/* Canvas */}
-                <canvas
-                  ref={canvasRef}
-                  className="w-full h-full rounded-2xl object-cover pointer-events-none z-10"
-                />
-
-                {/* Vignette */}
-                <div className="absolute inset-0 rounded-2xl bg-radial-vignette pointer-events-none mix-blend-multiply opacity-50 z-20" />
-              </div>
+              {/* Full-Screen Vignette */}
+              <div className="absolute inset-0 bg-radial-vignette pointer-events-none mix-blend-multiply opacity-60 z-20" />
 
               {/* Scroll Guidance prompt */}
-              <AnimatePresence>
-                {!hasScrolled && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.5 }}
-                    className="flex flex-col items-center gap-3 z-30"
-                  >
-                    <span className="text-xs font-bold font-mono tracking-widest text-zinc-400 uppercase">
-                      Scroll to Enter
-                    </span>
+              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center justify-center">
+                <AnimatePresence>
+                  {!hasScrolled && (
                     <motion.div
-                      animate={{ y: [0, 6, 0] }}
-                      transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
-                      className="w-5 h-8 border border-zinc-700 rounded-full flex justify-center p-1"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.5 }}
+                      className="flex flex-col items-center gap-3"
                     >
-                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                      <span className="text-xs font-bold font-mono tracking-widest text-zinc-400 uppercase drop-shadow-md">
+                        Scroll to Enter
+                      </span>
+                      <motion.div
+                        animate={{ y: [0, 6, 0] }}
+                        transition={{ repeat: Infinity, duration: 1.5, ease: 'easeInOut' }}
+                        className="w-5 h-8 border border-zinc-500 rounded-full flex justify-center p-1 bg-black/30 backdrop-blur-sm"
+                      >
+                        <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                      </motion.div>
                     </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
           )}
 
           {/* Initial loading phase UI */}
           <AnimatePresence>
-            {!isLoaded && (
+            {!showCanvas && (
               <motion.div
                 key="loading-ui"
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.6, ease: 'easeInOut' }}
-                className="flex flex-col items-center justify-center text-center z-20 px-8 w-full max-w-md"
+                transition={{ duration: 0.8, ease: 'easeInOut' }}
+                className="flex flex-col items-center justify-center text-center z-40 px-8 w-full max-w-md"
               >
                 {/* Branding Text */}
                 <motion.h1
@@ -226,7 +275,7 @@ export function Preloader({ onComplete }: PreloaderProps) {
                   <motion.div
                     className="absolute left-0 top-0 bottom-0 bg-white"
                     initial={{ width: '0%' }}
-                    animate={{ width: `${progress}%` }}
+                    animate={{ width: `${displayedProgress}%` }}
                     transition={{ ease: 'easeOut', duration: 0.1 }}
                   />
                 </div>
@@ -235,7 +284,7 @@ export function Preloader({ onComplete }: PreloaderProps) {
                 <div className="text-zinc-500 font-mono text-sm tracking-widest uppercase">
                   <span>Loading</span>
                   <span className="ml-2 font-bold text-white">
-                    {String(progress).padStart(3, '0')}%
+                    {String(displayedProgress).padStart(3, '0')}%
                   </span>
                 </div>
               </motion.div>
