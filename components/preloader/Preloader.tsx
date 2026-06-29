@@ -188,6 +188,15 @@ export function Preloader({ onComplete }: PreloaderProps) {
     onComplete();
   };
 
+  const getRizzStatement = (prog: number) => {
+    if (prog < 20) return 'vibe check in progress...';
+    if (prog < 40) return 'rizzing up the compiler...';
+    if (prog < 60) return 'letting the assets cook...';
+    if (prog < 80) return 'unlocking infinite aura...';
+    if (prog < 100) return 'locking in...';
+    return 'we are so back.';
+  };
+
   if (animationCompleted) return null;
 
   return (
@@ -258,20 +267,10 @@ export function Preloader({ onComplete }: PreloaderProps) {
                 initial={{ opacity: 1 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.8, ease: 'easeInOut' }}
-                className="flex flex-col items-center justify-center text-center z-40 px-8 w-full max-w-md"
+                className="flex flex-col items-center justify-center text-center z-40 px-8 w-full max-w-[280px]"
               >
-                {/* Branding Text */}
-                <motion.h1
-                  initial={{ letterSpacing: '0.2em', opacity: 0 }}
-                  animate={{ letterSpacing: '0.4em', opacity: 1 }}
-                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                  className="text-white text-2xl md:text-3xl font-extrabold tracking-[0.4em] uppercase font-sans mb-6"
-                >
-                  GM Techies
-                </motion.h1>
-
                 {/* Progress Bar */}
-                <div className="w-full h-[2px] bg-zinc-800 rounded-full overflow-hidden mb-3 relative">
+                <div className="w-full h-[1px] bg-zinc-900 rounded-full overflow-hidden mb-3 relative">
                   <motion.div
                     className="absolute left-0 top-0 bottom-0 bg-white"
                     initial={{ width: '0%' }}
@@ -280,10 +279,10 @@ export function Preloader({ onComplete }: PreloaderProps) {
                   />
                 </div>
 
-                {/* Percentage */}
-                <div className="text-zinc-500 font-mono text-sm tracking-widest uppercase">
-                  <span>Loading</span>
-                  <span className="ml-2 font-bold text-white">
+                {/* Percentage & Status Label */}
+                <div className="flex items-center justify-between w-full text-[10px] font-mono tracking-wider text-zinc-500 lowercase">
+                  <span>{getRizzStatement(displayedProgress)}</span>
+                  <span className="font-bold text-white font-mono">
                     {String(displayedProgress).padStart(3, '0')}%
                   </span>
                 </div>
