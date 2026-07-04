@@ -2,14 +2,21 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { usePreloader } from './usePreloader';
+
+// Dynamically import DotLottieReact with SSR disabled to prevent Node server build failures
+const DotLottieReact = dynamic(
+  () => import('@lottiefiles/dotlottie-react').then((mod) => mod.DotLottieReact),
+  { ssr: false }
+);
 
 interface PreloaderProps {
   onComplete: () => void;
 }
 
 export function Preloader({ onComplete }: PreloaderProps) {
-  const { progress, isLoaded, images } = usePreloader(75);
+  const { isLoaded, images } = usePreloader(75);
   const [isFadingOut, setIsFadingOut] = useState(false);
   const [animationCompleted, setAnimationCompleted] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
@@ -68,32 +75,6 @@ export function Preloader({ onComplete }: PreloaderProps) {
     return () => cancelAnimationFrame(animationFrameId);
   }, [isLoaded]);
 
-  // Frame drawing function with aspect cover (fill) scaling
-  const drawFrame = (ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, index: number) => {
-    const img = images[index];
-    if (!img) return;
-
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-    const imgWidth = img.naturalWidth || img.width;
-    const imgHeight = img.naturalHeight || img.height;
-
-    if (imgWidth === 0 || imgHeight === 0) return;
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-
-    // Cover scaling logic (aspect fill)
-    const scale = Math.max(canvasWidth / imgWidth, canvasHeight / imgHeight);
-    const drawWidth = imgWidth * scale;
-    const drawHeight = imgHeight * scale;
-    const x = (canvasWidth - drawWidth) / 2;
-    const y = (canvasHeight - drawHeight) / 2;
-
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    ctx.drawImage(img, x, y, drawWidth, drawHeight);
-  };
-
   // Main canvas render and scroll listener loop
   useEffect(() => {
     if (!isLoaded || images.length === 0) return;
@@ -103,6 +84,32 @@ export function Preloader({ onComplete }: PreloaderProps) {
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Frame drawing function with aspect cover (fill) scaling
+    const drawFrame = (index: number) => {
+      const img = images[index];
+      if (!img) return;
+
+      const canvasWidth = canvas.width;
+      const canvasHeight = canvas.height;
+      const imgWidth = img.naturalWidth || img.width;
+      const imgHeight = img.naturalHeight || img.height;
+
+      if (imgWidth === 0 || imgHeight === 0) return;
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Cover scaling logic (aspect fill)
+      const scale = Math.max(canvasWidth / imgWidth, canvasHeight / imgHeight);
+      const drawWidth = imgWidth * scale;
+      const drawHeight = imgHeight * scale;
+      const x = (canvasWidth - drawWidth) / 2;
+      const y = (canvasHeight - drawHeight) / 2;
+
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+      ctx.drawImage(img, x, y, drawWidth, drawHeight);
+    };
 
     const resizeCanvas = () => {
       const width = window.innerWidth;
@@ -114,7 +121,7 @@ export function Preloader({ onComplete }: PreloaderProps) {
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
-      drawFrame(ctx, canvas, Math.round(currentFrameRef.current));
+      drawFrame(Math.round(currentFrameRef.current));
     };
 
     window.addEventListener('resize', resizeCanvas);
@@ -160,7 +167,7 @@ export function Preloader({ onComplete }: PreloaderProps) {
       if (Math.abs(diff) > 0.001) {
         // Smooth lerping of frames
         currentFrameRef.current += diff * 0.12;
-        drawFrame(ctx, canvas, Math.round(currentFrameRef.current));
+        drawFrame(Math.round(currentFrameRef.current));
       }
 
       // Check if animation completed (reached frame 74)
@@ -269,6 +276,15 @@ export function Preloader({ onComplete }: PreloaderProps) {
                 transition={{ duration: 0.8, ease: 'easeInOut' }}
                 className="flex flex-col items-center justify-center text-center z-40 px-8 w-full max-w-[280px]"
               >
+                {/* Lottie Animation */}
+                <div className="w-24 h-24 mb-6 flex items-center justify-center">
+                  <DotLottieReact
+                    src="https://lottie.host/799df780-4a7a-4eec-9ff2-1970fb8070c2/8I5LiNlmf9.lottie"
+                    loop
+                    autoplay
+                  />
+                </div>
+
                 {/* Progress Bar */}
                 <div className="w-full h-[1px] bg-zinc-900 rounded-full overflow-hidden mb-3 relative">
                   <motion.div
