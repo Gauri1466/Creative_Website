@@ -6,7 +6,7 @@ import Image from 'next/image';
 
 export default function Hero() {
   return (
-    <section id="home" className="relative min-h-[calc(100vh-80px)] flex items-center py-16 md:py-24 overflow-hidden bg-background">
+    <section id="home" className="relative min-h-screen flex items-center pt-36 pb-16 md:pt-48 md:pb-24 overflow-hidden bg-background">
       
       {/* Decorative Background Elements */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] md:w-[600px] h-[300px] md:h-[600px] bg-primary/10 rounded-full blur-[120px] pointer-events-none z-0" />
@@ -37,9 +37,9 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent-light dark:bg-card-bg/40 border border-primary/20 text-xs font-bold tracking-wider text-primary uppercase mb-6 shadow-xs"
+            className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-accent-light dark:bg-card-bg/40 border border-primary/20 text-[9px] font-bold tracking-wider text-primary uppercase mb-5 shadow-xs"
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            <span className="w-1 h-1 rounded-full bg-primary animate-pulse" />
             ✨ Welcome to the future of learning
           </motion.div>
 
