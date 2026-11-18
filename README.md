@@ -471,21 +471,3 @@ npm run build
 npm run start
 ```
 
-## Development Roadmap
-
-- [ ] Database models and migrations
-- [ ] Registration and login
-- [ ] Learner, teacher, and administrator roles
-- [ ] Protected dashboards
-- [ ] Dynamic course catalog
-- [ ] Enrollment and learning progress
-- [ ] Internship management
-- [ ] Teacher course-submission workflow
-- [ ] Administrator approval workflow
-- [ ] Media uploads
-- [ ] Contact form persistence
-- [ ] Automated tests and CI/CD
-
-## License
-
-Add a project license before distributing or publishing the repository.
